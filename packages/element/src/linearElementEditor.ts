@@ -918,7 +918,7 @@ export class LinearElementEditor {
       const [lines, curves] = deconstructLinearOrFreeDrawElement(element);
 
       invariant(
-        lines.length === 0 && curves.length > 0,
+        curves.length > 0,
         "Only linears built out of curves are supported",
       );
       invariant(
@@ -950,8 +950,7 @@ export class LinearElementEditor {
     const [lines, curves] = deconstructLinearOrFreeDrawElement(element);
 
     invariant(
-      (lines.length === 0 && curves.length > 0) ||
-        (lines.length > 0 && curves.length === 0),
+      curves.length > 0 || lines.length > 0,
       "Only linears built out of either segments or curves are supported",
     );
     invariant(
@@ -959,14 +958,14 @@ export class LinearElementEditor {
       "Invalid segment index while calculating mid point",
     );
 
-    if (lines.length) {
-      const segment = lines[index - 1];
-      return pointCenter(segment[0], segment[1]);
-    }
-
     if (curves.length) {
       const segment = curves[index - 1];
       return curvePointAtLength(segment, 0.5);
+    }
+
+    if (lines.length) {
+      const segment = lines[index - 1];
+      return pointCenter(segment[0], segment[1]);
     }
 
     invariant(false, "Invalid segment type while calculating mid point");

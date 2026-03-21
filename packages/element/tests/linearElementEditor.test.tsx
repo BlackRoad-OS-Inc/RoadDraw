@@ -434,12 +434,12 @@ describe("Test Linear Elements", () => {
       expect(midPointsWithRoundEdge).toMatchInlineSnapshot(`
         [
           [
-            "53.63967",
-            "47.15774",
+            "53.71362",
+            "47.00964",
           ],
           [
-            "78.65236",
-            "44.31886",
+            "78.12355",
+            "44.18547",
           ],
         ]
       `);
@@ -499,12 +499,12 @@ describe("Test Linear Elements", () => {
       expect(newMidPoints).toMatchInlineSnapshot(`
         [
           [
-            "103.63967",
-            "67.15774",
+            "103.71362",
+            "67.00964",
           ],
           [
-            "128.65236",
-            "64.31886",
+            "128.12355",
+            "64.18547",
           ],
         ]
       `);
@@ -815,12 +815,12 @@ describe("Test Linear Elements", () => {
         expect(newMidPoints).toMatchInlineSnapshot(`
           [
             [
-              "28.64089",
-              "21.69997",
+              "28.69903",
+              "21.63181",
             ],
             [
-              "82.34322",
-              "47.57759",
+              "80.49825",
+              "46.17939",
             ],
           ]
         `);
@@ -904,12 +904,12 @@ describe("Test Linear Elements", () => {
         expect(newMidPoints).toMatchInlineSnapshot(`
           [
             [
-              "53.63967",
-              "47.15774",
+              "53.71362",
+              "47.00964",
             ],
             [
-              "78.65236",
-              "44.31886",
+              "78.12355",
+              "44.18547",
             ],
           ]
         `);
@@ -1191,7 +1191,7 @@ describe("Test Linear Elements", () => {
           20,
           105,
           80,
-          "56.00000",
+          "56.64410",
           45,
         ]
       `);
@@ -1202,7 +1202,7 @@ describe("Test Linear Elements", () => {
         .toMatchInlineSnapshot(`
           {
             "height": 130,
-            "width": "367.18528",
+            "width": "368.45681",
           }
         `);
 
@@ -1214,7 +1214,7 @@ describe("Test Linear Elements", () => {
         ),
       ).toMatchInlineSnapshot(`
         {
-          "x": "272.18528",
+          "x": "273.45681",
           "y": 45,
         }
       `);
@@ -1231,9 +1231,9 @@ describe("Test Linear Elements", () => {
         [
           20,
           35,
-          "502.18528",
+          "503.45681",
           95,
-          "208.69244",
+          "208.17751",
           "52.50000",
         ]
       `);

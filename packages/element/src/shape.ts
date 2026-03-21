@@ -684,20 +684,92 @@ export const generateLinearCollisionShape = (
           }
         }
 
+        // Mirror arrowhead-extent adjustments from generateSimpleArrowRoundedShape
+        // so the collision curve departs/arrives at the same lead/tail anchors.
+        const startAh =
+          element.type === "arrow" ? element.startArrowhead ?? null : null;
+        const endAh =
+          element.type === "arrow" ? element.endArrowhead ?? "arrow" : null;
+        const startExtent = startAh !== null ? getArrowheadSize(startAh) : null;
+        const endExtent = endAh !== null ? getArrowheadSize(endAh) : null;
+
+        let startLeadX = points[0][0];
+        let startLeadY = points[0][1];
+        if (startExtent !== null) {
+          const tanMag = Math.sqrt(ptx[0] * ptx[0] + pty[0] * pty[0]);
+          if (tanMag > 0) {
+            startLeadX = points[0][0] + (startExtent * ptx[0]) / tanMag;
+            startLeadY = points[0][1] + (startExtent * pty[0]) / tanMag;
+            collisionOps.push({
+              op: "lineTo",
+              data: rotateLocal(startLeadX, startLeadY),
+            });
+          }
+        }
+
+        let endTailX = points[n - 1][0];
+        let endTailY = points[n - 1][1];
+        if (endExtent !== null) {
+          const tanMag = Math.sqrt(
+            ptx[n - 1] * ptx[n - 1] + pty[n - 1] * pty[n - 1],
+          );
+          if (tanMag > 0) {
+            endTailX = points[n - 1][0] - (endExtent * ptx[n - 1]) / tanMag;
+            endTailY = points[n - 1][1] - (endExtent * pty[n - 1]) / tanMag;
+          }
+        }
+
         for (let i = 0; i < n - 1; i++) {
-          const cp1x = points[i][0] + ptx[i] / 3;
-          const cp1y = points[i][1] + pty[i] / 3;
-          const cp2x = points[i + 1][0] - ptx[i + 1] / 3;
-          const cp2y = points[i + 1][1] - pty[i + 1] / 3;
+          const isFirst = i === 0;
+          const isLast = i === n - 2;
+
+          // Use lead/tail anchors for the first/last segment when arrowheads present
+          const segStartX =
+            isFirst && startExtent !== null ? startLeadX : points[i][0];
+          const segStartY =
+            isFirst && startExtent !== null ? startLeadY : points[i][1];
+          const segEndX =
+            isLast && endExtent !== null ? endTailX : points[i + 1][0];
+          const segEndY =
+            isLast && endExtent !== null ? endTailY : points[i + 1][1];
+
+          // Clamp control-point offsets to half the segment length to avoid
+          // overshooting on short segments (matches generateSimpleArrowRoundedShape).
+          const segLen = pointDistance(points[i], points[i + 1]);
+          const tanMag1 = Math.sqrt(ptx[i] * ptx[i] + pty[i] * pty[i]);
+          const tanMag2 = Math.sqrt(
+            ptx[i + 1] * ptx[i + 1] + pty[i + 1] * pty[i + 1],
+          );
+          const s1 = tanMag1 > 0 ? Math.min(1, (segLen * 1.5) / tanMag1) : 1;
+          const s2 = tanMag2 > 0 ? Math.min(1, (segLen * 1.5) / tanMag2) : 1;
+
+          const cp1x = segStartX + (ptx[i] / 3) * s1;
+          const cp1y = segStartY + (pty[i] / 3) * s1;
+          const cp2x = segEndX - (ptx[i + 1] / 3) * s2;
+          const cp2y = segEndY - (pty[i + 1] / 3) * s2;
 
           const rcp1 = rotateLocal(cp1x, cp1y);
           const rcp2 = rotateLocal(cp2x, cp2y);
-          const rend = rotateLocal(points[i + 1][0], points[i + 1][1]);
 
-          collisionOps.push({
-            op: "bcurveTo",
-            data: [rcp1[0], rcp1[1], rcp2[0], rcp2[1], rend[0], rend[1]],
-          });
+          if (isLast && endExtent !== null) {
+            // Curve ends at the tail anchor; add a straight line to the
+            // actual endpoint so the arrowhead has a clean straight approach.
+            const rend = rotateLocal(segEndX, segEndY);
+            collisionOps.push({
+              op: "bcurveTo",
+              data: [rcp1[0], rcp1[1], rcp2[0], rcp2[1], rend[0], rend[1]],
+            });
+            collisionOps.push({
+              op: "lineTo",
+              data: rotateLocal(points[n - 1][0], points[n - 1][1]),
+            });
+          } else {
+            const rend = rotateLocal(points[i + 1][0], points[i + 1][1]);
+            collisionOps.push({
+              op: "bcurveTo",
+              data: [rcp1[0], rcp1[1], rcp2[0], rcp2[1], rend[0], rend[1]],
+            });
+          }
         }
       }
       return collisionOps;
