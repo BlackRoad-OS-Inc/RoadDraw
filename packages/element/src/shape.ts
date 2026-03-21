@@ -58,6 +58,7 @@ import { headingForPointIsHorizontal } from "./heading";
 import { canChangeRoundness } from "./comparisons";
 import {
   getArrowheadPoints,
+  getArrowheadSize,
   getCenterForBounds,
   getDiamondPoints,
   getElementAbsoluteCoords,
@@ -941,9 +942,20 @@ const _generateElementShape = (
           ];
         }
       } else {
+        const startAh =
+          element.type === "arrow" ? element.startArrowhead ?? null : null;
+        const endAh =
+          element.type === "arrow" ? element.endArrowhead ?? "arrow" : null;
+        const startExtent = startAh !== null ? getArrowheadSize(startAh) : null;
+        const endExtent = endAh !== null ? getArrowheadSize(endAh) : null;
         shape = [
           generator.path(
-            generateSimpleArrowShape(points, 0.5),
+            generateSimpleArrowRoundedShape(
+              points,
+              0.5,
+              startExtent,
+              endExtent,
+            ),
             generateRoughOptions(element, true, isDarkMode),
           ),
         ];
@@ -1030,9 +1042,11 @@ const _generateElementShape = (
   }
 };
 
-const generateSimpleArrowShape = (
+const generateSimpleArrowRoundedShape = (
   points: readonly LocalPoint[],
   tension = 0.5,
+  startExtent: number | null = null,
+  endExtent: number | null = null,
 ): string => {
   if (points.length < 2) {
     return "";
@@ -1077,8 +1091,52 @@ const generateSimpleArrowShape = (
     }
   }
 
-  const path: string[] = [`M ${points[0][0]} ${points[0][1]}`];
+  // Compute the straight-line anchor points for arrowhead ends.
+  // The curve stops at these points; a straight L command bridges to the
+  // actual endpoint so the arrowhead always has a clean straight approach.
+  let startLeadX = points[0][0];
+  let startLeadY = points[0][1];
+  if (startExtent !== null) {
+    const tanMag = Math.sqrt(tx[0] * tx[0] + ty[0] * ty[0]);
+    if (tanMag > 0) {
+      startLeadX = points[0][0] + (startExtent * tx[0]) / tanMag;
+      startLeadY = points[0][1] + (startExtent * ty[0]) / tanMag;
+    }
+  }
+
+  let endTailX = points[n - 1][0];
+  let endTailY = points[n - 1][1];
+  if (endExtent !== null) {
+    const tanMag = Math.sqrt(tx[n - 1] * tx[n - 1] + ty[n - 1] * ty[n - 1]);
+    if (tanMag > 0) {
+      endTailX = points[n - 1][0] - (endExtent * tx[n - 1]) / tanMag;
+      endTailY = points[n - 1][1] - (endExtent * ty[n - 1]) / tanMag;
+    }
+  }
+
+  const path: string[] = [
+    startExtent !== null
+      ? `M ${points[0][0]} ${points[0][1]} L ${startLeadX} ${startLeadY}`
+      : `M ${points[0][0]} ${points[0][1]}`,
+  ];
   for (let i = 0; i < n - 1; i++) {
+    const isFirst = i === 0;
+    const isLast = i === n - 2;
+
+    // When a start arrowhead is present the bezier departs from startLeadX/Y
+    // (current pen position after the L command), so cp1 must be relative to
+    // that point rather than points[0] — otherwise the departure tangent
+    // points backward, creating a loop that hides the straight segment.
+    const segStartX =
+      isFirst && startExtent !== null ? startLeadX : points[i][0];
+    const segStartY =
+      isFirst && startExtent !== null ? startLeadY : points[i][1];
+
+    // Same for the end arrowhead: cp2 must be relative to endTailX/Y so the
+    // bezier arrives there pointing toward points[n-1], not away from it.
+    const segEndX = isLast && endExtent !== null ? endTailX : points[i + 1][0];
+    const segEndY = isLast && endExtent !== null ? endTailY : points[i + 1][1];
+
     const segLen = pointDistance(points[i], points[i + 1]);
     // Clamp each control point offset to at most half the segment length so
     // that curvature decreases linearly to 0 as the two endpoints converge.
@@ -1086,15 +1144,26 @@ const generateSimpleArrowShape = (
     const tanMag2 = Math.sqrt(tx[i + 1] * tx[i + 1] + ty[i + 1] * ty[i + 1]);
     const s1 = tanMag1 > 0 ? Math.min(1, (segLen * 1.5) / tanMag1) : 1;
     const s2 = tanMag2 > 0 ? Math.min(1, (segLen * 1.5) / tanMag2) : 1;
-    const cp1x = points[i][0] + (tx[i] / 3) * s1;
-    const cp1y = points[i][1] + (ty[i] / 3) * s1;
-    const cp2x = points[i + 1][0] - (tx[i + 1] / 3) * s2;
-    const cp2y = points[i + 1][1] - (ty[i + 1] / 3) * s2;
-    path.push(
-      `C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${points[i + 1][0]} ${
-        points[i + 1][1]
-      }`,
-    );
+    const cp1x = segStartX + (tx[i] / 3) * s1;
+    const cp1y = segStartY + (ty[i] / 3) * s1;
+    const cp2x = segEndX - (tx[i + 1] / 3) * s2;
+    const cp2y = segEndY - (ty[i + 1] / 3) * s2;
+
+    if (isLast && endExtent !== null) {
+      // End the curve at the tail anchor and add a straight approach line
+      // so the arrowhead always connects to a straight segment.
+      path.push(
+        `C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${segEndX} ${segEndY} L ${
+          points[n - 1][0]
+        } ${points[n - 1][1]}`,
+      );
+    } else {
+      path.push(
+        `C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${points[i + 1][0]} ${
+          points[i + 1][1]
+        }`,
+      );
+    }
   }
 
   return path.join(" ");
