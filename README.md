@@ -1,3 +1,11 @@
+# RoadDraw
+
+> RoadDraw — Sovereign whiteboard. Fork of Excalidraw. Real-time collaboration. Proprietary BlackRoad OS.
+
+Part of the [BlackRoad OS](https://blackroad.io) ecosystem — [BlackRoad-OS-Inc](https://github.com/BlackRoad-OS-Inc)
+
+---
+
 # RoadDraw — Sovereign Whiteboard
 
 > Forked from [Excalidraw](https://github.com/excalidraw/excalidraw). Visual collaboration for BlackRoad agents and humans.
